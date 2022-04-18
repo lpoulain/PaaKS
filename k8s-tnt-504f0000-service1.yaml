@@ -1,0 +1,44 @@
+---
+apiVersion: apps/v1
+kind: Deployment                 # Type of Kubernetes resource
+metadata:
+  name: tnt-504f0000-service1           # Name of the Kubernetes resource
+  labels:
+    app.kubernetes.io/name: tnt-504f0000-service1
+spec:
+  replicas: 1                    # Number of pods to run at any given time
+  selector:
+    matchLabels:
+      app: tnt-504f0000-service1        # This deployment applies to any Pods matching the specified label
+  template:                      # This deployment will create a set of pods using the configurations in this template
+    metadata:
+      labels:                    # The labels that will be applied to all of the pods in this deployment
+        app: tnt-504f0000-service1
+        app.kubernetes.io/name: tnt-504f0000-service1
+    spec:                        # Spec for the container which will run in the Pod
+      containers:
+      - name: tnt-504f0000-service1
+        image: svc-python
+        imagePullPolicy: IfNotPresent
+        ports:
+          - containerPort: 5000  # Should match the port number that the Go application listens on
+        volumeMounts:
+        - name: blockdisk01
+          mountPath: /tmp/storage
+          subPath: tnt-504f0000-service1
+      volumes:
+      - name: blockdisk01
+        persistentVolumeClaim:
+          claimName: pv-main-fs
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tnt-504f0000-service1
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: tnt-504f0000-service1
+  ports:
+  - port: 80
+    targetPort: 5000

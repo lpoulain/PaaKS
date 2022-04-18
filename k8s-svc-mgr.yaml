@@ -1,0 +1,45 @@
+---
+apiVersion: apps/v1
+kind: Deployment                 # Type of Kubernetes resource
+metadata:
+  name: svc-mgr           # Name of the Kubernetes resource
+  labels:
+    app.kubernetes.io/name: svc-mgr
+spec:
+  replicas: 1                    # Number of pods to run at any given time
+  selector:
+    matchLabels:
+      app: svc-mgr        # This deployment applies to any Pods matching the specified label
+  template:                      # This deployment will create a set of pods using the configurations in this template
+    metadata:
+      labels:                    # The labels that will be applied to all of the pods in this deployment
+        app: svc-mgr
+        app.kubernetes.io/name: svc-mgr
+    spec:                        # Spec for the container which will run in the Pod
+      terminationGracePeriodSeconds: 5
+      containers:
+      - name: svc-mgr
+        image: svc-mgr 
+        imagePullPolicy: IfNotPresent
+        ports:
+          - containerPort: 2000  # Should match the port number that the Go application listens on
+        volumeMounts:
+        - name: blockdisk01
+          mountPath: /mnt/mainfs
+          subPath: service1
+      volumes:
+      - name: blockdisk01
+        persistentVolumeClaim:
+          claimName: pv-main-fs
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc-mgr
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: svc-mgr
+  ports:
+  - port: 80
+    targetPort: 3000
