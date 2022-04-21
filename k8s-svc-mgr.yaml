@@ -25,8 +25,7 @@ spec:
           - containerPort: 2000  # Should match the port number that the Go application listens on
         volumeMounts:
         - name: blockdisk01
-          mountPath: /mnt/mainfs
-          subPath: service1
+          mountPath: /tmp/storage
       volumes:
       - name: blockdisk01
         persistentVolumeClaim:

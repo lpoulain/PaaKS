@@ -53,8 +53,11 @@ func index(w http.ResponseWriter, r *http.Request) {
 		req, error = http.NewRequest("POST", "http:/"+path, r.Body)
 		//		resp, error = http.Post("http:/"+r.URL.Path, r.Header.Get("Content-Type"), r.Body)
 		break
-	case "OPTIONS":
-		w.WriteHeader(http.StatusAccepted)
+	case "DELETE":
+		req, error = http.NewRequest("DELETE", "http:/"+path, nil)
+		break
+	default:
+		http.Error(w, "Unsupported method: "+r.Method, http.StatusBadRequest)
 		return
 	}
 

@@ -2,6 +2,8 @@
 
 PaaKS is an open-source PaaS (Platform-as-a-Service) based on Kubernetes written in Go which allows to write Python apps.
 
+![List of services](/./services.png)
+
 ![The UI](./UI.png)
 
 ![Service call](./service_call.png)
@@ -17,13 +19,12 @@ PaaKS is an open-source PaaS (Platform-as-a-Service) based on Kubernetes written
 
 PaaKS is a Platform-as-a-Service deployable on Kubernetes. It right now provides the following features:
 
-- The ability to deploy and execute Tenant Services written in Python
+- The ability to create/deploy and execute Tenant Services written in Python
 - Multi-tenancy (albeit with no security right now)
-- A Web frontend allowing to see said running services, see and edit files available to those services, including the Python code executed
+- A Web frontend allowing to see said running services, see and edit files available to those services, including the Python code executed by those services
 
 Future features:
 
-- Ability to create a new Account Service from the frontend
 - Authentication
 - Database support
 - Git integration
