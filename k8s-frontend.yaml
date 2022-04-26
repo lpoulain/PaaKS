@@ -2,25 +2,29 @@
 apiVersion: apps/v1
 kind: Deployment                 # Type of Kubernetes resource
 metadata:
-  name: svc-mgr           # Name of the Kubernetes resource
+  name: frontend           # Name of the Kubernetes resource
   labels:
-    app.kubernetes.io/name: svc-mgr
+    app.kubernetes.io/name: frontend
 spec:
   replicas: 1                    # Number of pods to run at any given time
   selector:
     matchLabels:
-      app: svc-mgr        # This deployment applies to any Pods matching the specified label
+      app: frontend        # This deployment applies to any Pods matching the specified label
   template:                      # This deployment will create a set of pods using the configurations in this template
     metadata:
       labels:                    # The labels that will be applied to all of the pods in this deployment
-        app: svc-mgr
-        app.kubernetes.io/name: svc-mgr
+        app: frontend
+        app.kubernetes.io/name: frontend
     spec:                        # Spec for the container which will run in the Pod
-      terminationGracePeriodSeconds: 5
       containers:
-      - name: svc-mgr
-        image: svc-mgr
+      - name: frontend
+        image: frontend
         env:
+          - name: DB_CONN_STRING
+            valueFrom:
+              secretKeyRef:
+                name: paaks-secret
+                key: dbConnStr
           - name: SECRET_KEY
             valueFrom:
               secretKeyRef:
@@ -28,23 +32,16 @@ spec:
                 key: secretKey
         imagePullPolicy: IfNotPresent
         ports:
-          - containerPort: 2000  # Should match the port number that the Go application listens on
-        volumeMounts:
-        - name: blockdisk01
-          mountPath: /tmp/storage
-      volumes:
-      - name: blockdisk01
-        persistentVolumeClaim:
-          claimName: pv-main-fs
+          - containerPort: 3000  # Should match the port number that the Go application listens on
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: svc-mgr
+  name: frontend
 spec:
-  type: ClusterIP
+  type: LoadBalancer
   selector:
-    app.kubernetes.io/name: svc-mgr
+    app: frontend
   ports:
-  - port: 80
+  - port: 3000
     targetPort: 3000

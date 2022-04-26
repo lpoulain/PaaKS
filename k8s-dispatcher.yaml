@@ -15,7 +15,13 @@ spec:
     spec:                        # Spec for the container which will run in the Pod
       containers:
       - name: dispatcher
-        image: dispatcher 
+        image: dispatcher
+        env:
+          - name: SECRET_KEY
+            valueFrom:
+              secretKeyRef:
+                name: paaks-secret
+                key: secretKey
         imagePullPolicy: IfNotPresent
         ports:
           - containerPort: 3000  # Should match the port number that the Go application listens on

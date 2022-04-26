@@ -16,6 +16,17 @@ spec:
       containers:
       - name: auth
         image: auth
+        env:
+          - name: DB_CONNECTION_STRING
+            valueFrom:
+              secretKeyRef:
+                name: paaks-secret
+                key: dbConnStr
+          - name: SECRET_KEY
+            valueFrom:
+              secretKeyRef:
+                name: paaks-secret
+                key: secretKey
         imagePullPolicy: IfNotPresent
         ports:
           - containerPort: 3000  # Should match the port number that the Go application listens on

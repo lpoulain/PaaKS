@@ -8,12 +8,26 @@ import (
 	"strings"
 )
 
+var systemServices = map[string]bool{
+	"filesystem": true,
+	"svc-mgr":    true,
+	"admin":      true,
+	"auth":       true,
+	"frontend":   true,
+}
+
+var unauthenticatedServices = map[string]bool{
+	"auth":     true,
+	"frontend": true,
+}
+
 func index(w http.ResponseWriter, r *http.Request) {
 	scheme := "http"
 	if r.URL.Scheme != "" {
 		scheme = r.URL.Scheme
 	}
 	host, _, _ := net.SplitHostPort(r.Host)
+
 	w.Header().Set("Access-Control-Allow-Origin", scheme+"://"+host+":3000")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PATCH, PUT, DELETE, OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept")
@@ -31,18 +45,37 @@ func index(w http.ResponseWriter, r *http.Request) {
 	var error error
 
 	path := r.URL.Path
+	pathSubstrings := strings.Split(r.URL.Path, "/")
+	if len(pathSubstrings) < 2 || pathSubstrings[1] == "" {
+		http.Error(w, "Please specify a service", http.StatusBadRequest)
+		return
+	}
+	service := pathSubstrings[1]
 
-	if path != "/auth/login" {
-		auth := r.Header.Get("Authorization")
-		if auth == "" {
+	token, err := getToken(r)
+
+/*	auth := r.Header.Get("Authorization")
+	if auth == "" {
+		cookie, err := r.Cookie("token")
+		if err == nil && cookie.Value != "" {
+			auth = cookie.Value[:8]
+		}
+	} else {
+		auth = auth[7:15]
+	}*/
+
+	if _, ok := unauthenticatedServices[service]; !ok {
+		if token == nil {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
-
-		if !strings.HasPrefix(path, "/filesystem") && !strings.HasPrefix(path, "/svc-mgr") && !strings.HasPrefix(path, "/auth") {
-			path = fmt.Sprintf("/tnt-%s-%s", auth[7:15], path[1:])
-		}
 	}
+
+	if _, ok := systemServices[service]; !ok {
+		path = fmt.Sprintf("/tnt-%s-%s", token.Tenant[:8], path[1:])
+	}
+
+	fmt.Println("  => http:/" + path)
 
 	switch r.Method {
 	case "GET":
@@ -72,9 +105,10 @@ func index(w http.ResponseWriter, r *http.Request) {
 	req.Header.Add("Content-Type", r.Header.Get("Content-Type"))
 
 	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err = client.Do(req)
 
 	if err != nil {
+		fmt.Println("  => Error executing the request: " + err.Error())
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -82,15 +116,24 @@ func index(w http.ResponseWriter, r *http.Request) {
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
+		fmt.Println("  => Error reading the response: " + err.Error())
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+
+	fmt.Println("Body: ", body)
 
 	for _, cookie := range resp.Cookies() {
 		http.SetCookie(w, cookie)
 	}
 
-	fmt.Fprint(w, string(body))
+	for name, values := range resp.Header {
+		for _, value := range values {
+			w.Header().Set(name, value)
+		}
+	}
+
+	w.Write(body)
 }
 
 func check(w http.ResponseWriter, r *http.Request) {

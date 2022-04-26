@@ -57,13 +57,12 @@ func int64Ptr(i int64) *int64 { return &i }
 ///////////////
 
 func router(w http.ResponseWriter, r *http.Request) {
-	token := r.Header.Get("Authorization")
-	fmt.Println(token)
-	if !strings.HasPrefix(token, "Bearer ") {
+	token, err := getToken(r)
+	if err != nil {
 		issueError(w, "No token")
 		return
 	}
-	companyId := token[7:15]
+	companyId := token.Tenant[:8]
 
 	subPaths := strings.Split(r.URL.Path, "/")
 	service := ""

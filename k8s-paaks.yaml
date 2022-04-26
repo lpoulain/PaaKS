@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: paaks-secret
+type: Opaque
+data:
+  dbConnStr: cG9zdGdyZXM6Ly9hZG1pbjp0ZXN0MTIzQHBvc3RncmVzOjU0MzIvcG9zdGdyZXNkYj9zc2xtb2RlPWRpc2FibGU=
+  secretKey: NTg2ZmZjNjNjNjU2OGJhMmNlZGE=
