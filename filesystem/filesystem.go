@@ -6,30 +6,29 @@ import (
 	"net/http"
 	"os"
 	"regexp"
-	"strings"
 )
 
-func error(w http.ResponseWriter, message string) {
+func issueError(w http.ResponseWriter, message string) {
 	http.Error(w, message, http.StatusBadRequest)
 }
 
 func router(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("URL: ", r.URL.Path, ", method: ", r.Method)
 
-	token := r.Header.Get("Authorization")
-	fmt.Println(token)
-	if !strings.HasPrefix(token, "Bearer ") {
+	token, err := getToken(r)
+
+	if err != nil {
 		fmt.Fprintf(w, "No token")
 		return
 	}
 
-	companyId := token[7:15]
+	companyId := token.Tenant[:8]
 
 	regex, _ := regexp.Compile("^/([^/]+)/(.*)$")
 	results := regex.FindStringSubmatch(r.URL.Path)
 
 	if len(results) < 3 {
-		error(w, "Invalid path")
+		issueError(w, "Invalid path")
 		return
 	}
 
@@ -54,13 +53,13 @@ func load(w http.ResponseWriter, service string, path string) {
 	file, err := os.Open(filename)
 
 	if err != nil {
-		error(w, "Invalid path")
+		issueError(w, "Invalid path")
 		return
 	}
 
 	fileInfo, err := file.Stat()
 	if err != nil {
-		error(w, "Invalid path")
+		issueError(w, "Invalid path")
 		return
 	}
 
@@ -75,7 +74,7 @@ func loadFile(w http.ResponseWriter, path string) {
 	data, err := os.ReadFile(path)
 
 	if err != nil {
-		error(w, "Cannot read the file")
+		issueError(w, "Cannot read the file")
 		return
 	}
 
@@ -91,7 +90,7 @@ func loadDir(w http.ResponseWriter, path string) {
 	data, err := os.ReadDir(path)
 
 	if err != nil {
-		error(w, "Cannot read the directory")
+		issueError(w, "Cannot read the directory")
 		return
 	}
 
