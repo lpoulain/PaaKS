@@ -21,6 +21,11 @@ spec:
       - name: svc-mgr
         image: svc-mgr
         env:
+          - name: DB_CONNECTION_STRING
+            valueFrom:
+              secretKeyRef:
+                name: paaks-secret
+                key: dbConnStr
           - name: SECRET_KEY
             valueFrom:
               secretKeyRef:
