@@ -16,17 +16,6 @@ func int32Ptr(i int32) *int32 { return &i }
 func int64Ptr(i int64) *int64 { return &i }
 
 func queryRunningDeployments(clientset *kubernetes.Clientset) (map[string]Service, error) {
-	/*	// creates the in-cluster config
-		config, err := rest.InClusterConfig()
-		if err != nil {
-			return nil, err
-		}
-		// creates the clientset
-		clientset, err := kubernetes.NewForConfig(config)
-		if err != nil {
-			return nil, err
-		}
-	*/
 	// get pods in all the namespaces by omitting namespace
 	// Or specify namespace to get pods in particular namespace
 	pods, err := clientset.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{})

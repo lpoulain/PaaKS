@@ -154,18 +154,29 @@ func delete(w http.ResponseWriter, r *http.Request, serviceName string, tenant s
 }
 
 func createMissingDeployments() {
-	runningServices, err := queryRunningDeployments(clientset)
+	definedServices, err := queryServicesInDatabase()
 	if err != nil {
-		fmt.Println("Error finding running deployments", err.Error())
+		fmt.Println("Error finding services defined in the database", err.Error())
 		return
 	}
 
-	definedServices, err := queryServicesInDatabase()
+	k8sDeploymentServices, err := queryRunningDeployments(clientset)
+	if err == nil {
+		for fullServiceName, _ := range definedServices {
+			if _, ok := k8sDeploymentServices[fullServiceName]; !ok {
+				createDeployment(fullServiceName, deploymentClient)
+				fmt.Println("k8s Deployment", fullServiceName, "created")
+			}
+		}
+	}
 
-	for fullServiceName, _ := range definedServices {
-		if _, ok := runningServices[fullServiceName]; !ok {
-			createDeployment(fullServiceName, deploymentClient)
-			createTenantService(fullServiceName, clientset)
+	k8sServices, err := queryTenantServices(clientset)
+	if err == nil {
+		for fullServiceName, _ := range definedServices {
+			if _, ok := k8sServices[fullServiceName]; !ok {
+				createTenantService(fullServiceName, clientset)
+				fmt.Println("k8s Service", fullServiceName, "created")
+			}
 		}
 	}
 }
