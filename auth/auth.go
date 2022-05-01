@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/sha256"
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -14,9 +15,85 @@ import (
 
 const clientID = "paaks"
 
-func issueError(w http.ResponseWriter, message string) {
-	fmt.Println(message)
-	http.Error(w, message, http.StatusBadRequest)
+/*
+func queryUsers(filters ...string) ([]User, error) {
+	connStr := getConnectionString()
+	conn, err := sql.Open("postgres", connStr)
+	if err != nil {
+		fmt.Println("ERROR connecting to the database:", err.Error())
+		return []User{}, err
+	}
+
+	sql := "SELECT email, password, salt, fullname, tenant FROM admin.users"
+	args := []string{}
+	if len(filters) > 0 {
+		sql += " WHERE"
+		for idx, filter := range filters {
+			if idx%2 == 0 {
+				sql += fmt.Sprintf(" AND %s = $%d", filter, idx/2+1)
+			} else {
+				args = append(args, filter)
+			}
+		}
+	}
+
+	stmt, err := conn.Prepare(sql)
+	stmt.Query(args)
+
+	rows, err := conn.Query(sql)
+
+	if err != nil {
+		fmt.Println("ERROR querying data:", err.Error())
+		return []User{}, err
+	}
+
+	users := []User{}
+
+	defer conn.Close()
+	defer rows.Close()
+	for rows.Next() {
+		var email string
+		var password string
+		var salt string
+		var fullname string
+		var tenant string
+		if err := rows.Scan(&email, &password, &salt, &fullname, &tenant); err != nil {
+			return []User{}, err
+		}
+
+		users = append(users, User{
+			email:        email,
+			passwordhash: password,
+			salt:         salt,
+			fullname:     fullname,
+			tenant:       tenant,
+		})
+	}
+
+	return users, nil
+}
+*/
+
+func userConstructor(rows *sql.Rows) (User, error) {
+	var email string
+	var password string
+	var salt string
+	var fullname string
+	var tenant string
+	var role int
+
+	if err := rows.Scan(&email, &password, &salt, &fullname, &tenant, &role); err != nil {
+		return User{}, err
+	}
+
+	return User{
+		email:        email,
+		passwordhash: password,
+		fullname:     fullname,
+		salt:         salt,
+		tenant:       tenant,
+		role:         role,
+	}, nil
 }
 
 func GenerateJWT(user User) (string, error) {
@@ -48,30 +125,39 @@ func parseToken(w http.ResponseWriter, r *http.Request) {
 	token, err := getToken(r)
 
 	if err != nil {
-		issueError(w, "Invalid token: "+err.Error())
+		issueError(w, "Invalid token: "+err.Error(), http.StatusUnauthorized)
 		return
 	}
 
-	w.Header().Set("Content-Type", "text/plain")
-	fmt.Fprintf(w, "Email: %s, Tenant: %s, Role: %d, Expiration: %d", token.Email, token.Tenant, token.Role, token.Expiration)
+	w.Header().Set("Content-Type", "text/json")
+	tokenJson := map[string]interface{}{
+		"email":      token.Email,
+		"tenant":     token.Tenant,
+		"role":       token.Role,
+		"expiration": token.Expiration,
+	}
+
+	result, _ := json.Marshal(tokenJson)
+	w.Write(result)
 }
 
 func login(w http.ResponseWriter, r *http.Request) {
 	var authdetails Authentication
 	err := json.NewDecoder(r.Body).Decode(&authdetails)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		issueError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	users, err := queryUsers("email = '" + authdetails.Email + "'")
+	var users []User
+	users, err = query[User]("SELECT email, password, salt, fullname, tenant, role FROM admin.users WHERE email = $1", userConstructor, authdetails.Email)
 
 	if err != nil || len(users) != 1 {
 		fmt.Println("Cannot find email '", authdetails.Email, "', ", len(users), "response")
 		if err != nil {
-			issueError(w, err.Error())
+			issueError(w, err.Error(), http.StatusUnauthorized)
 		} else {
-			issueError(w, "Invalid username or password")
+			issueError(w, "Invalid username or password", http.StatusUnauthorized)
 		}
 		return
 	}
@@ -81,13 +167,13 @@ func login(w http.ResponseWriter, r *http.Request) {
 	computedPassword := base64.StdEncoding.EncodeToString(hash[:])
 
 	if user.passwordhash != computedPassword {
-		issueError(w, "Invalid username or password")
+		issueError(w, "Invalid username or password", http.StatusUnauthorized)
 		return
 	}
 
 	token, err := GenerateJWT(user)
 	if len(users) != 1 {
-		issueError(w, "Cannot generate token")
+		issueError(w, "Cannot generate token", http.StatusInternalServerError)
 		return
 	}
 

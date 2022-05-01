@@ -26,11 +26,6 @@ import (
 var clientset *kubernetes.Clientset
 var deploymentClient dep.DeploymentInterface
 
-func issueError(w http.ResponseWriter, message string) {
-	fmt.Println(message)
-	http.Error(w, message, http.StatusBadRequest)
-}
-
 type Service struct {
 	name   string
 	tenant string
@@ -59,7 +54,7 @@ func getK8sResources() (*kubernetes.Clientset, dep.DeploymentInterface, error) {
 func router(w http.ResponseWriter, r *http.Request) {
 	token, err := getToken(r)
 	if err != nil {
-		issueError(w, "No token")
+		issueError(w, "No token", http.StatusUnauthorized)
 		return
 	}
 	tenant := token.Tenant
@@ -76,20 +71,20 @@ func router(w http.ResponseWriter, r *http.Request) {
 		return
 	case "POST":
 		if service == "" {
-			issueError(w, "Missing service")
+			issueError(w, "Missing service", http.StatusBadRequest)
 			return
 		}
 		create(w, r, service, tenant)
 		return
 	case "DELETE":
 		if service == "" {
-			issueError(w, "Missing service")
+			issueError(w, "Missing service", http.StatusBadRequest)
 			return
 		}
 		delete(w, r, service, tenant)
 		return
 	default:
-		issueError(w, "Unsupported mehtod: "+r.Method)
+		issueError(w, "Unsupported mehtod: "+r.Method, http.StatusBadRequest)
 	}
 }
 
@@ -99,7 +94,7 @@ func list(w http.ResponseWriter, r *http.Request, tenant string) {
 	existingServices, err := queryTenantDeployments(tenant[:8], clientset)
 
 	if err != nil {
-		issueError(w, err.Error())
+		issueError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -118,25 +113,25 @@ func create(w http.ResponseWriter, r *http.Request, serviceName string, tenant s
 	// Create the directory and file
 	err := createServiceFiles(serviceFullName)
 	if err != nil {
-		issueError(w, err.Error())
+		issueError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	// Create the deployment
 	err = createDeployment(serviceFullName, deploymentClient)
 	if err != nil {
-		issueError(w, err.Error())
+		issueError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	// Service
 	err = createTenantService(serviceFullName, clientset)
 	if err != nil {
-		issueError(w, err.Error())
+		issueError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	// Database
 	err = createServiceInDatabase(serviceName, tenant)
 	if err != nil {
-		issueError(w, err.Error())
+		issueError(w, err.Error(), http.StatusInternalServerError)
 	}
 
 	fmt.Fprintf(w, "Service created")

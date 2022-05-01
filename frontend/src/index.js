@@ -6,6 +6,7 @@ import FileView from './fileview';
 import FileEdit from './fileedit';
 import ServiceManager from './svc_mgr';
 import reportWebVitals from './reportWebVitals';
+import Admin from './admin.js'
 import { Router } from 'react-router';
 import { Route } from 'react-router-dom';
 import { CookiesProvider, useCookies } from "react-cookie";
@@ -20,13 +21,30 @@ export default class Frontend extends React.Component {
     super(props);
 
     this.state = {
-      token: props.token
+      token: props.token,
+      tenant: ''
     };
+  }
+
+  componentDidMount() {
+    if (this.state.token !== '') {
+      fetch('http://localhost:8080/auth/token', { headers: new Headers( {'Authorization': 'Bearer ' + this.props.token }) })
+        .then(res => res.json())
+        .then(token => {
+          this.setState({
+            tenant: token.tenant
+          })
+        })
+    }
   }
 
   render() {
     if (typeof this.state.token == 'undefined' || this.state.token === '') {
       return <Login setCookie={this.props.setCookie} history={history}/>
+    }
+
+    if (this.state.tenant === '00000000-0000-0000-0000-000000000000') {
+      return <Admin token={this.props.token} setCookie={this.props.setCookie} history={history}></Admin>
     }
 
     return <Router history={history}>

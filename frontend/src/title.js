@@ -7,6 +7,7 @@ export default class Title extends React.Component {
     handleLogout(t) {
         t.props.setCookie("token", "")
         t.props.history.push("/")
+        window.location.reload()
     }
 
     render() {

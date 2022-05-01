@@ -47,26 +47,16 @@ func index(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 	pathSubstrings := strings.Split(r.URL.Path, "/")
 	if len(pathSubstrings) < 2 || pathSubstrings[1] == "" {
-		http.Error(w, "Please specify a service", http.StatusBadRequest)
+		issueError(w, "Please specify a service", http.StatusBadRequest)
 		return
 	}
 	service := pathSubstrings[1]
 
 	token, err := getToken(r)
 
-/*	auth := r.Header.Get("Authorization")
-	if auth == "" {
-		cookie, err := r.Cookie("token")
-		if err == nil && cookie.Value != "" {
-			auth = cookie.Value[:8]
-		}
-	} else {
-		auth = auth[7:15]
-	}*/
-
 	if _, ok := unauthenticatedServices[service]; !ok {
 		if token == nil {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			issueError(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 	}
@@ -95,7 +85,7 @@ func index(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if error != nil {
-		http.Error(w, error.Error(), http.StatusBadRequest)
+		issueError(w, error.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -109,7 +99,7 @@ func index(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		fmt.Println("  => Error executing the request: " + err.Error())
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		issueError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -117,7 +107,7 @@ func index(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		fmt.Println("  => Error reading the response: " + err.Error())
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		issueError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 

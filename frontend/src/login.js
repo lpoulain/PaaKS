@@ -20,7 +20,7 @@ export default class Login extends React.Component {
 
     loginDone(t, results) {
         t.props.setCookie("token", results)
-        t.props.history.push("/")
+        window.location.reload()
     }
 
     render() {
