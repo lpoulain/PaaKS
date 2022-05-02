@@ -1,4 +1,4 @@
-package main
+package paaks
 
 import (
 	"fmt"
@@ -35,20 +35,20 @@ type Token struct {
 	Expiration int    `json:"exp"`
 }
 
-func issueError(w http.ResponseWriter, message string, status int) {
+func IssueError(w http.ResponseWriter, message string, status int) {
 	fmt.Println(message)
 	http.Error(w, message, http.StatusBadRequest)
 }
 
-func getSecretKey() string {
+func GetSecretKey() string {
 	return os.Getenv("SECRET_KEY")
 }
 
-func getConnectionString() string {
+func GetConnectionString() string {
 	return os.Getenv("DB_CONNECTION_STRING")
 }
 
-func getToken(r *http.Request) (*Token, error) {
+func GetToken(r *http.Request) (*Token, error) {
 	var mySigningKey = []byte(getSecretKey())
 	authorization := r.Header["Authorization"]
 	if len(authorization) == 0 {

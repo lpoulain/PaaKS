@@ -10,7 +10,7 @@ import (
 )
 
 func QueryToResponse(w http.ResponseWriter, sqlQuery string, constructor func(*sql.Rows) (interface{}, error), args ...interface{}) {
-	objects, err := query(sqlQuery, constructor, args...)
+	objects, err := Query(sqlQuery, constructor, args...)
 	if err != nil {
 		issueError(w, err.Error(), http.StatusInternalServerError)
 		return
