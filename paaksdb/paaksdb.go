@@ -1,4 +1,4 @@
-package main
+package paaksdb
 
 import (
 	"database/sql"
@@ -7,12 +7,13 @@ import (
 	"net/http"
 
 	_ "github.com/lib/pq"
+	"github.com/lpoulain/PaaKS/paaks"
 )
 
-func queryToResponse(w http.ResponseWriter, sqlQuery string, constructor func(*sql.Rows) (interface{}, error), args ...interface{}) {
-	objects, err := query(sqlQuery, constructor, args...)
+func QueryToResponse(w http.ResponseWriter, sqlQuery string, constructor func(*sql.Rows) (interface{}, error), args ...interface{}) {
+	objects, err := Query(sqlQuery, constructor, args...)
 	if err != nil {
-		issueError(w, err.Error(), http.StatusInternalServerError)
+		paaks.IssueError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -21,8 +22,8 @@ func queryToResponse(w http.ResponseWriter, sqlQuery string, constructor func(*s
 	w.Write(result)
 }
 
-func query[K interface{}](sqlQuery string, constructor func(*sql.Rows) (K, error), args ...interface{}) ([]K, error) {
-	connStr := getConnectionString()
+func Query[K interface{}](sqlQuery string, constructor func(*sql.Rows) (K, error), args ...interface{}) ([]K, error) {
+	connStr := paaks.getConnectionString()
 	conn, err := sql.Open("postgres", connStr)
 	if err != nil {
 		fmt.Println("ERROR connecting to the database:", err.Error())
@@ -71,8 +72,8 @@ func query[K interface{}](sqlQuery string, constructor func(*sql.Rows) (K, error
 	return objects, nil
 }
 
-func exec(sqlQuery string, args ...interface{}) error {
-	connStr := getConnectionString()
+func Exec(sqlQuery string, args ...interface{}) error {
+	connStr := paaks.getConnectionString()
 	conn, err := sql.Open("postgres", connStr)
 	if err != nil {
 		fmt.Println("ERROR connecting to the database:", err.Error())
