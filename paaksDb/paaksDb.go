@@ -1,4 +1,4 @@
-package paaksDb
+package paaksdb
 
 import (
 	"database/sql"
