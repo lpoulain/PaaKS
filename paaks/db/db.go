@@ -9,7 +9,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
-func queryToResponse(w http.ResponseWriter, sqlQuery string, constructor func(*sql.Rows) (interface{}, error), args ...interface{}) {
+func QueryToResponse(w http.ResponseWriter, sqlQuery string, constructor func(*sql.Rows) (interface{}, error), args ...interface{}) {
 	objects, err := query(sqlQuery, constructor, args...)
 	if err != nil {
 		issueError(w, err.Error(), http.StatusInternalServerError)
@@ -21,7 +21,7 @@ func queryToResponse(w http.ResponseWriter, sqlQuery string, constructor func(*s
 	w.Write(result)
 }
 
-func query[K interface{}](sqlQuery string, constructor func(*sql.Rows) (K, error), args ...interface{}) ([]K, error) {
+func Query[K interface{}](sqlQuery string, constructor func(*sql.Rows) (K, error), args ...interface{}) ([]K, error) {
 	connStr := getConnectionString()
 	conn, err := sql.Open("postgres", connStr)
 	if err != nil {
@@ -71,7 +71,7 @@ func query[K interface{}](sqlQuery string, constructor func(*sql.Rows) (K, error
 	return objects, nil
 }
 
-func exec(sqlQuery string, args ...interface{}) error {
+func Exec(sqlQuery string, args ...interface{}) error {
 	connStr := getConnectionString()
 	conn, err := sql.Open("postgres", connStr)
 	if err != nil {
