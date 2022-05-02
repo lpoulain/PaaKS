@@ -23,7 +23,7 @@ func QueryToResponse(w http.ResponseWriter, sqlQuery string, constructor func(*s
 }
 
 func Query[K interface{}](sqlQuery string, constructor func(*sql.Rows) (K, error), args ...interface{}) ([]K, error) {
-	connStr := paaks.getConnectionString()
+	connStr := paaks.GetConnectionString()
 	conn, err := sql.Open("postgres", connStr)
 	if err != nil {
 		fmt.Println("ERROR connecting to the database:", err.Error())
@@ -73,7 +73,7 @@ func Query[K interface{}](sqlQuery string, constructor func(*sql.Rows) (K, error
 }
 
 func Exec(sqlQuery string, args ...interface{}) error {
-	connStr := paaks.getConnectionString()
+	connStr := paaks.GetConnectionString()
 	conn, err := sql.Open("postgres", connStr)
 	if err != nil {
 		fmt.Println("ERROR connecting to the database:", err.Error())
