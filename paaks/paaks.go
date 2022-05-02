@@ -49,7 +49,7 @@ func GetConnectionString() string {
 }
 
 func GetToken(r *http.Request) (*Token, error) {
-	var mySigningKey = []byte(getSecretKey())
+	var mySigningKey = []byte(GetSecretKey())
 	authorization := r.Header["Authorization"]
 	if len(authorization) == 0 {
 		return nil, fmt.Errorf("No authentication")
