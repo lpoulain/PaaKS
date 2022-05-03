@@ -10,8 +10,8 @@ import (
 	"github.com/lpoulain/PaaKS/paaks"
 )
 
-func QueryToResponse(w http.ResponseWriter, sqlQuery string, constructor func(*sql.Rows) (interface{}, error), args ...interface{}) {
-	objects, err := Query(sqlQuery, constructor, args...)
+func QueryDbToResponse(w http.ResponseWriter, sqlQuery string, constructor func(*sql.Rows) (interface{}, error), args ...interface{}) {
+	objects, err := QueryDb(sqlQuery, constructor, args...)
 	if err != nil {
 		paaks.IssueError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -22,7 +22,7 @@ func QueryToResponse(w http.ResponseWriter, sqlQuery string, constructor func(*s
 	w.Write(result)
 }
 
-func Query[K interface{}](sqlQuery string, constructor func(*sql.Rows) (K, error), args ...interface{}) ([]K, error) {
+func QueryDb[K interface{}](sqlQuery string, constructor func(*sql.Rows) (K, error), args ...interface{}) ([]K, error) {
 	connStr := paaks.GetConnectionString()
 	conn, err := sql.Open("postgres", connStr)
 	if err != nil {
@@ -72,7 +72,7 @@ func Query[K interface{}](sqlQuery string, constructor func(*sql.Rows) (K, error
 	return objects, nil
 }
 
-func Exec(sqlQuery string, args ...interface{}) error {
+func ExecDb(sqlQuery string, args ...interface{}) error {
 	connStr := paaks.GetConnectionString()
 	conn, err := sql.Open("postgres", connStr)
 	if err != nil {
