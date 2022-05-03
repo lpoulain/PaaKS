@@ -9,7 +9,7 @@ import (
 	"github.com/dgrijalva/jwt-go"
 )
 
-const ROOT = "00000000-0000-0000-0000-000000000000"
+const Root = "00000000-0000-0000-0000-000000000000"
 
 var Roles = map[int]string{
 	1: "USER",
