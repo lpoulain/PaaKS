@@ -18,13 +18,13 @@ var Roles = map[int]string{
 }
 
 type User struct {
-	email        string
-	passwordhash string
-	salt         string
-	fullname     string
-	createDate   string
-	tenant       string
-	role         int
+	Email        string
+	Passwordhash string
+	Salt         string
+	Fullname     string
+	CreateDate   string
+	Tenant       string
+	Role         int
 }
 
 type Token struct {
