@@ -88,3 +88,22 @@ func GetToken(r *http.Request) (*Token, error) {
 		return nil, fmt.Errorf("Cannot get field out of the token")
 	}
 }
+
+func Map[K interface{}, V interface{}](vs []K, f func(K) V) []V {
+	vsm := make([]V, len(vs))
+	for i, v := range vs {
+		vsm[i] = f(v)
+	}
+	return vsm
+}
+
+func Filter(vs []string, f func(string) bool) []string {
+	vsf := make([]string, 0)
+	for _, v := range vs {
+		if f(v) {
+			vsf = append(vsf, v)
+		}
+	}
+	return vsf
+}
+
