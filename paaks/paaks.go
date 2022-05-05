@@ -11,7 +11,6 @@ import (
 
 const Root = "00000000-0000-0000-0000-000000000000"
 
-
 var Roles = map[int]string{
 	1: "USER",
 	2: "ADMIN",
