@@ -22,7 +22,7 @@ spec:
   accessModes:
     - ReadWriteOnce
   hostPath:
-    path: .../db
+    path: /Users/Laurent/code/Kubernetes/db
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
