@@ -48,6 +48,7 @@ The architecture contains the following services:
 - `admin` (internal): allows to create tenants and users (no UI yet)
 - `filesystem` (internal): allows to read and update files belonging to a given services
 - `svg-mgr` (internal): the Service Manager which is used to list existing Services and create tenant services
+- `db-mgr` (internal): the service which allows to access a database
 - `tnt-<company ID>-*` (internal): any Tenant Service, i.e. a service created by a tenant
 
 ## Tenant Services (TS)
