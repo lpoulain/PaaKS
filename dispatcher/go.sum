@@ -2,3 +2,5 @@ github.com/dgrijalva/jwt-go v3.2.0+incompatible h1:7qlOGliEKZXTDg6OTjfoBKDXWrumC
 github.com/dgrijalva/jwt-go v3.2.0+incompatible/go.mod h1:E3ru+11k8xSBh+hMPgOLZmtrrCbhqsmaPHjLKYnJCaQ=
 github.com/lib/pq v1.10.5 h1:J+gdV2cUmX7ZqL2B0lFcW0m+egaHC2V3lpO8nWxyYiQ=
 github.com/lib/pq v1.10.5/go.mod h1:AlVN5x4E4T544tWzH6hKfbfQvm3HdbOxrmggDNAPY9o=
+github.com/lpoulain/PaaKS/paaks v0.0.0-20220502042729-90ad73762820 h1:tovk88w8nkp9SsigzCzqcSHf3ezwn6d5ragAX1/IJ+s=
+github.com/lpoulain/PaaKS/paaks v0.0.0-20220502042729-90ad73762820/go.mod h1:fbxIAkoQDT31GQ7/87dGnFkCXWwGmwjIA1/P3xIlaqM=

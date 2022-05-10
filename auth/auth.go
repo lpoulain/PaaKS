@@ -9,6 +9,9 @@ import (
 	"net/http"
 	"time"
 
+	"auth/paaks"
+	"auth/paaksdb"
+
 	"github.com/dgrijalva/jwt-go"
 	_ "github.com/lib/pq"
 )
@@ -74,7 +77,7 @@ func queryUsers(filters ...string) ([]User, error) {
 }
 */
 
-func userConstructor(rows *sql.Rows) (User, error) {
+func userConstructor(rows *sql.Rows) (paaks.User, error) {
 	var email string
 	var password string
 	var salt string
@@ -83,28 +86,28 @@ func userConstructor(rows *sql.Rows) (User, error) {
 	var role int
 
 	if err := rows.Scan(&email, &password, &salt, &fullname, &tenant, &role); err != nil {
-		return User{}, err
+		return paaks.User{}, err
 	}
 
-	return User{
-		email:        email,
-		passwordhash: password,
-		fullname:     fullname,
-		salt:         salt,
-		tenant:       tenant,
-		role:         role,
+	return paaks.User{
+		Email:        email,
+		Passwordhash: password,
+		Fullname:     fullname,
+		Salt:         salt,
+		Tenant:       tenant,
+		Role:         role,
 	}, nil
 }
 
-func GenerateJWT(user User) (string, error) {
-	var mySigningKey = []byte(getSecretKey())
+func GenerateJWT(user paaks.User) (string, error) {
+	var mySigningKey = []byte(paaks.GetSecretKey())
 	token := jwt.New(jwt.SigningMethodHS256)
 	claims := token.Claims.(jwt.MapClaims)
 
 	claims["authorized"] = true
-	claims["email"] = user.email
-	claims["tenant"] = user.tenant
-	claims["role"] = user.role
+	claims["email"] = user.Email
+	claims["tenant"] = user.Tenant
+	claims["role"] = user.Role
 	claims["exp"] = time.Now().Add(time.Hour * 24).Unix()
 
 	tokenString, err := token.SignedString(mySigningKey)
@@ -122,10 +125,10 @@ type Authentication struct {
 }
 
 func parseToken(w http.ResponseWriter, r *http.Request) {
-	token, err := getToken(r)
+	token, err := paaks.GetToken(r)
 
 	if err != nil {
-		issueError(w, "Invalid token: "+err.Error(), http.StatusUnauthorized)
+		paaks.IssueError(w, "Invalid token: "+err.Error(), http.StatusUnauthorized)
 		return
 	}
 
@@ -145,35 +148,35 @@ func login(w http.ResponseWriter, r *http.Request) {
 	var authdetails Authentication
 	err := json.NewDecoder(r.Body).Decode(&authdetails)
 	if err != nil {
-		issueError(w, err.Error(), http.StatusBadRequest)
+		paaks.IssueError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	var users []User
-	users, err = query[User]("SELECT email, password, salt, fullname, tenant, role FROM admin.users WHERE email = $1", userConstructor, authdetails.Email)
+	var users []paaks.User
+	users, err = paaksdb.QueryDb[paaks.User]("SELECT email, password, salt, fullname, tenant, role FROM admin.users WHERE email = $1", userConstructor, authdetails.Email)
 
 	if err != nil || len(users) != 1 {
 		fmt.Println("Cannot find email '", authdetails.Email, "', ", len(users), "response")
 		if err != nil {
-			issueError(w, err.Error(), http.StatusUnauthorized)
+			paaks.IssueError(w, err.Error(), http.StatusUnauthorized)
 		} else {
-			issueError(w, "Invalid username or password", http.StatusUnauthorized)
+			paaks.IssueError(w, "Invalid username or password", http.StatusUnauthorized)
 		}
 		return
 	}
 
 	user := users[0]
-	hash := sha256.Sum256([]byte(user.salt + authdetails.Password))
+	hash := sha256.Sum256([]byte(user.Salt + authdetails.Password))
 	computedPassword := base64.StdEncoding.EncodeToString(hash[:])
 
-	if user.passwordhash != computedPassword {
-		issueError(w, "Invalid username or password", http.StatusUnauthorized)
+	if user.Passwordhash != computedPassword {
+		paaks.IssueError(w, "Invalid username or password", http.StatusUnauthorized)
 		return
 	}
 
 	token, err := GenerateJWT(user)
 	if len(users) != 1 {
-		issueError(w, "Cannot generate token", http.StatusInternalServerError)
+		paaks.IssueError(w, "Cannot generate token", http.StatusInternalServerError)
 		return
 	}
 

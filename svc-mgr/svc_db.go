@@ -3,6 +3,8 @@ package main
 import (
 	"database/sql"
 	"fmt"
+
+	"github.com/lpoulain/PaaKS/paaksdb"
 )
 
 func serviceConstructor(rows *sql.Rows) (Service, error) {
@@ -19,7 +21,7 @@ func serviceConstructor(rows *sql.Rows) (Service, error) {
 }
 
 func queryServicesInDatabase() (map[string]Service, error) {
-	services, err := query[Service]("SELECT name, tenant FROM admin.services", serviceConstructor)
+	services, err := paaksdb.QueryDb[Service]("SELECT name, tenant FROM admin.services", serviceConstructor)
 	if err != nil {
 		return nil, err
 	}
@@ -35,9 +37,9 @@ func queryServicesInDatabase() (map[string]Service, error) {
 }
 
 func createServiceInDatabase(name string, tenant string) error {
-	return exec("INSERT INTO admin.services (name, tenant) VALUES($1, $2)", name, tenant)
+	return paaksdb.ExecDb("INSERT INTO admin.services (name, tenant) VALUES($1, $2)", name, tenant)
 }
 
 func deleteServiceInDatabase(name string, tenant string) error {
-	return exec("DELETE FROM admin.services (name, tenant) VALUES($1, $2)", name, tenant)
+	return paaksdb.ExecDb("DELETE FROM admin.services (name, tenant) VALUES($1, $2)", name, tenant)
 }

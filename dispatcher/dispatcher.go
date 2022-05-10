@@ -6,11 +6,14 @@ import (
 	"net"
 	"net/http"
 	"strings"
+
+	"github.com/lpoulain/PaaKS/paaks"
 )
 
 var systemServices = map[string]bool{
 	"filesystem": true,
 	"svc-mgr":    true,
+	"db-mgr":     true,
 	"admin":      true,
 	"auth":       true,
 	"frontend":   true,
@@ -47,16 +50,16 @@ func index(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 	pathSubstrings := strings.Split(r.URL.Path, "/")
 	if len(pathSubstrings) < 2 || pathSubstrings[1] == "" {
-		issueError(w, "Please specify a service", http.StatusBadRequest)
+		paaks.IssueError(w, "Please specify a service", http.StatusBadRequest)
 		return
 	}
 	service := pathSubstrings[1]
 
-	token, err := getToken(r)
+	token, err := paaks.GetToken(r)
 
 	if _, ok := unauthenticatedServices[service]; !ok {
 		if token == nil {
-			issueError(w, "Unauthorized", http.StatusUnauthorized)
+			paaks.IssueError(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 	}
@@ -85,7 +88,7 @@ func index(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if error != nil {
-		issueError(w, error.Error(), http.StatusBadRequest)
+		paaks.IssueError(w, error.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -99,7 +102,7 @@ func index(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		fmt.Println("  => Error executing the request: " + err.Error())
-		issueError(w, err.Error(), http.StatusBadRequest)
+		paaks.IssueError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -107,7 +110,7 @@ func index(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		fmt.Println("  => Error reading the response: " + err.Error())
-		issueError(w, err.Error(), http.StatusBadRequest)
+		paaks.IssueError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
