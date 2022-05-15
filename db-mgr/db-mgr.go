@@ -46,20 +46,20 @@ func sqlHandler(w http.ResponseWriter, r *http.Request) {
 	tenantShort := token.Tenant[:8]
 
 	body, _ := ioutil.ReadAll(r.Body)
-	qry, err := Parse(string(body))
+	database := fmt.Sprintf("tnt_%s", tenantShort)
+
+	qry, err := ParseSql(string(body), database)
+	fmt.Println(qry)
 
 	if err != nil {
 		paaks.IssueError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	qry.TableName = fmt.Sprintf("tnt_%s.%s", tenantShort, qry.TableName)
-
 	firstRecord := true
 	columns := make([]interface{}, 0)
 
 	constructor := func(rows *sql.Rows) ([]interface{}, error) {
-
 		if firstRecord {
 			cols, _ := rows.ColumnTypes()
 			for _, col := range cols {
@@ -83,18 +83,15 @@ func sqlHandler(w http.ResponseWriter, r *http.Request) {
 			return nil, err
 		}
 
-		/*		for i, field := range qry.Fields {
-				fmt.Printf("%s %d\n", field, i)
-				result[field] = valuePtrs[i]
-			}*/
-
 		return valuePtrs, nil
 	}
 
-	fmt.Printf("SQL: %+v\n", qry)
-	fmt.Printf("SQL: %s\n", qry.getSql())
+	fmt.Printf("SQL: %s\n", qry)
+	if r.Header.Get("Test") != "" {
+		return
+	}
 
-	rows, err := paaksdb.QueryDb[[]interface{}](qry.getSql(), constructor)
+	rows, err := paaksdb.QueryDb[[]interface{}](qry, constructor)
 
 	if err != nil {
 		paaks.IssueError(w, "Error executing: "+err.Error(), http.StatusInternalServerError)
@@ -113,6 +110,7 @@ func sqlHandler(w http.ResponseWriter, r *http.Request) {
 	jsonResult, _ := json.Marshal(result)
 
 	w.Write(jsonResult)
+
 }
 
 ///////////////////////////////////////////////////////////

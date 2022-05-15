@@ -36,7 +36,7 @@ Future features:
 
 - Modify `k8s-storage.yaml` so that the `path` variable points to the current `storage` folder
 - Run `deploy_storage.sh` to create the file storage
-- In the following folders run `build.sh` then `deploy.sh`: `frontend`, `auth`, `admin`, `dispatcher`, `filesystem`, `svc-mgr`, `svc-python`
+- In the following folders run `build.sh` then `deploy.sh`: `frontend`, `auth`, `admin`, `dispatcher`, `filesystem`, `svc-mgr`, `db-mgr`, `svc-python`
 
 ## Services
 
@@ -48,7 +48,7 @@ The architecture contains the following services:
 - `admin` (internal): allows to create tenants and users (no UI yet)
 - `filesystem` (internal): allows to read and update files belonging to a given services
 - `svg-mgr` (internal): the Service Manager which is used to list existing Services and create tenant services
-- `db-mgr` (internal): the service which allows to access a database
+- `db-mgr` (internal): allows to access the system database
 - `tnt-<company ID>-*` (internal): any Tenant Service, i.e. a service created by a tenant
 
 ## Tenant Services (TS)
