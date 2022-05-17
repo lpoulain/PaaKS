@@ -4,5 +4,6 @@ metadata:
   name: paaks-secret
 type: Opaque
 data:
+  hostname: aHR0cDovL2xvY2FsaG9zdDo4MDgw
   dbConnStr: cG9zdGdyZXM6Ly9hZG1pbjp0ZXN0MTIzQHBvc3RncmVzOjU0MzIvcG9zdGdyZXNkYj9zc2xtb2RlPWRpc2FibGU=
   secretKey: NTg2ZmZjNjNjNjU2OGJhMmNlZGE=

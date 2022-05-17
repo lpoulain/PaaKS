@@ -40,6 +40,10 @@ func IssueError(w http.ResponseWriter, message string, status int) {
 	http.Error(w, message, http.StatusBadRequest)
 }
 
+func GetHostname() string {
+	return os.Getenv("HOSTNAME")
+}
+
 func GetSecretKey() string {
 	return os.Getenv("SECRET_KEY")
 }
@@ -105,4 +109,3 @@ func Filter(vs []string, f func(string) bool) []string {
 	}
 	return vsf
 }
-
