@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"time"
 
-	"auth/paaks"
-	"auth/paaksdb"
+	"github.com/lpoulain/PaaKS/paaks"
+	"github.com/lpoulain/PaaKS/paaksdb"
 
 	"github.com/dgrijalva/jwt-go"
 	_ "github.com/lib/pq"
