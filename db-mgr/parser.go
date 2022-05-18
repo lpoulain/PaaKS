@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"strings"
+
+	"github.com/lpoulain/PaaKS/paaks"
 )
 
 type AST struct {
@@ -43,7 +45,7 @@ func (token Token) generateSql(database string) string {
 	}
 
 	if token.children != nil && len(token.children) > 0 {
-		return strings.Join(Map(token.children, func(token Token) string { return token.generateSql(database) }), " ")
+		return strings.Join(paaks.Map(token.children, func(token Token) string { return token.generateSql(database) }), " ")
 	}
 
 	if token.code == "string" {
@@ -158,7 +160,11 @@ func ParseSql(sql string, database string) (string, error) {
 
 	switch tokens[0].code {
 	case "SELECT", "INSERT", "UPDATE", "DELETE":
-		res, _, token = parseAst(tokens[0].code, tokens)
+		var tokensLeft []Token
+		res, tokensLeft, token = parseAst(tokens[0].code, tokens)
+		if len(tokensLeft) > 0 {
+			return "", fmt.Errorf("Unknown tokens after the %s command", tokens[0].code)
+		}
 	default:
 		res = false
 	}

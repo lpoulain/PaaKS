@@ -2,7 +2,7 @@ github.com/dgrijalva/jwt-go v3.2.0+incompatible h1:7qlOGliEKZXTDg6OTjfoBKDXWrumC
 github.com/dgrijalva/jwt-go v3.2.0+incompatible/go.mod h1:E3ru+11k8xSBh+hMPgOLZmtrrCbhqsmaPHjLKYnJCaQ=
 github.com/lib/pq v1.10.5 h1:J+gdV2cUmX7ZqL2B0lFcW0m+egaHC2V3lpO8nWxyYiQ=
 github.com/lib/pq v1.10.5/go.mod h1:AlVN5x4E4T544tWzH6hKfbfQvm3HdbOxrmggDNAPY9o=
-github.com/lpoulain/PaaKS/paaks v0.0.0-20220502042729-90ad73762820 h1:tovk88w8nkp9SsigzCzqcSHf3ezwn6d5ragAX1/IJ+s=
-github.com/lpoulain/PaaKS/paaks v0.0.0-20220502042729-90ad73762820/go.mod h1:fbxIAkoQDT31GQ7/87dGnFkCXWwGmwjIA1/P3xIlaqM=
+github.com/lpoulain/PaaKS/paaks v0.0.0-20220517020345-6aa619145e12 h1:vl5lbRb1GTsY2vmAwD3xRZy6vGV8eiFzmmQIq3LpLMY=
+github.com/lpoulain/PaaKS/paaks v0.0.0-20220517020345-6aa619145e12/go.mod h1:yZMvR8EYdRuhG749aq88A3cHIMyPGzJnBSE38EAm0+w=
 github.com/lpoulain/PaaKS/paaksdb v0.0.0-20220505022240-3bb07b0c9946 h1:L4+wd5CVKKu4DidmLgkQ6jStvElYapsXpMf919eBQJU=
 github.com/lpoulain/PaaKS/paaksdb v0.0.0-20220505022240-3bb07b0c9946/go.mod h1:fqAaLlV4xCn03Ei/m9KQEG+9chik5XsaaIcXmjDcQk8=
