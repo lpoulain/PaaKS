@@ -1,6 +1,7 @@
 import React from 'react';
 import Title from './title';
 import { API } from './api';
+import DatabaseManager from './db_mgr';
 
 import './index.css';
 import '../node_modules/bootstrap/dist/css/bootstrap.min.css'
@@ -10,7 +11,8 @@ export default class ServiceManager extends React.Component {
         super(props);
 
         this.state = {
-            services: []
+            services: [],
+            newServiceType: "svc-reactjs"
         }
     }
 
@@ -41,8 +43,7 @@ export default class ServiceManager extends React.Component {
 
     render() {
         return (
-            <div className="container">
-                <Title detail="Welcome to PaaKS (Platform-as-a-Kubernetes-Service)" setCookie={this.props.setCookie} history={this.props.history}/>
+            <div>
                 <div className="col-lg-12">
                     <div className="panel panel-primary">
                         <div className="panel-heading"></div>
@@ -62,12 +63,17 @@ export default class ServiceManager extends React.Component {
                         </div>
                     </div>
                 </div>
-
-                <br/>
-                <br/>
-                <p>Create new service:</p>
-                <input className="" id="newService"></input>&nbsp;
-                <button type="button" className="btn btn-primary" onClick={() => this.handleCreate(this)}>Create</button>
+                <div className="col-lg-12">
+                    <p>Create new service:</p>
+                    <input className="" id="newService"></input>&nbsp;
+                    <select value={this.state.newServiceType} onChange={(event) => this.setState({newServiceType: event.target.value})}>
+                        <option value="svc-python">Python Microservice</option>
+                        <option value="svc-reactjs">ReactJS Frontend</option>
+                    </select>&nbsp;
+                    <button type="button" className="btn btn-primary" onClick={() => this.handleCreate(this)}>Create</button>
+                    <br/>&nbsp;
+                    <br/>&nbsp;
+                </div>
             </div>
         );
     }

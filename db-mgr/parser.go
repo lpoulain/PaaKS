@@ -76,7 +76,7 @@ func tokensMatchAst(astTokens []string, tokens []Token, trail []Token) (bool, []
 
 	if strings.HasPrefix(astTokens[0], "[") && strings.HasSuffix(astTokens[0], "]") {
 		recurstAstName := astTokens[0][1 : len(astTokens[0])-1]
-		isMatch, remainingTokens, groupToken = parseAst(recurstAstName, tokens)
+		isMatch, remainingTokens, groupToken = ParseAst(recurstAstName, tokens)
 		if !isMatch {
 			return false, remainingTokens, trail
 		}
@@ -92,7 +92,7 @@ func tokensMatchAst(astTokens []string, tokens []Token, trail []Token) (bool, []
 	return tokensMatchAst(astTokens[1:], remainingTokens, trail)
 }
 
-func parseAst(astName string, tokens []Token) (bool, []Token, Token) {
+func ParseAst(astName string, tokens []Token) (bool, []Token, Token) {
 	for _, ast := range ASTs {
 		if ast.name != astName {
 			continue
@@ -131,11 +131,10 @@ func (parentToken Token) reduce(groupCode string, code string, separatorCode str
 	}
 }
 
-func ParseSql(sql string, database string) (string, error) {
+func GetTokens(sql string) ([]Token, error) {
 	tokens := []Token{}
 	var token Token
 	var err error
-	var res bool
 
 	chars := []rune(sql)
 
@@ -143,13 +142,43 @@ func ParseSql(sql string, database string) (string, error) {
 	for pos >= 0 {
 		token, pos, err = nextToken(chars, pos)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 		if pos >= 0 {
 			tokens = append(tokens, token)
 		}
 	}
 
+	return tokens, nil
+}
+
+func ParseSql(sql string, database string) (string, error) {
+	var res bool
+	var token Token
+
+	tokens, err := GetTokens(sql)
+
+	if err != nil {
+		return "", err
+	}
+	/*
+		tokens := []Token{}
+		var token Token
+		var err error
+
+		chars := []rune(sql)
+
+		pos := 0
+		for pos >= 0 {
+			token, pos, err = nextToken(chars, pos)
+			if err != nil {
+				return "", err
+			}
+			if pos >= 0 {
+				tokens = append(tokens, token)
+			}
+		}
+	*/
 	for _, token := range tokens {
 		if token.value == "" {
 			fmt.Printf("[%s] ", token.code)
@@ -161,7 +190,7 @@ func ParseSql(sql string, database string) (string, error) {
 	switch tokens[0].code {
 	case "SELECT", "INSERT", "UPDATE", "DELETE":
 		var tokensLeft []Token
-		res, tokensLeft, token = parseAst(tokens[0].code, tokens)
+		res, tokensLeft, token = ParseAst(tokens[0].code, tokens)
 		if len(tokensLeft) > 0 {
 			return "", fmt.Errorf("Unknown tokens after the %s command", tokens[0].code)
 		}

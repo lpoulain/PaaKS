@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 
 	"github.com/lpoulain/PaaKS/paaks"
 	"github.com/lpoulain/PaaKS/paaksdb"
@@ -131,8 +132,9 @@ func columnConstructor(rows *sql.Rows) (interface{}, error) {
 	var ordinal_position int
 	var is_nullable bool
 	var data_type string
+	var column_default string
 
-	if err := rows.Scan(&name, &ordinal_position, &is_nullable, &data_type); err != nil {
+	if err := rows.Scan(&name, &ordinal_position, &is_nullable, &data_type, &column_default); err != nil {
 		return "", err
 	}
 
@@ -141,6 +143,7 @@ func columnConstructor(rows *sql.Rows) (interface{}, error) {
 		"ordinal_position": ordinal_position,
 		"is_nullable":      is_nullable,
 		"data_type":        data_type,
+		"column_default":   column_default,
 	}, nil
 }
 
@@ -153,10 +156,102 @@ func columnHandler(w http.ResponseWriter, r *http.Request) {
 
 	body, err := ioutil.ReadAll(r.Body)
 
-	paaksdb.QueryDbToResponse(w, fmt.Sprintf("SELECT column_name, ordinal_position, CASE WHEN is_nullable = 'YES' THEN 'true' ELSE 'false' END, data_type FROM information_schema.columns WHERE table_schema = 'tnt_%s' AND table_name = $1",
+	paaksdb.QueryDbToResponse(w, fmt.Sprintf("SELECT column_name, ordinal_position, CASE WHEN is_nullable = 'YES' THEN 'true' ELSE 'false' END, UPPER(udt_name) AS data_type, COALESCE(column_default, '') FROM information_schema.columns WHERE table_schema = 'tnt_%s' AND table_name = $1 ORDER BY ordinal_position",
 		token.Tenant[:8]),
 		columnConstructor,
 		string(body))
+}
+
+func alterTableHandler(w http.ResponseWriter, r *http.Request) {
+	token, err := paaks.GetToken(r)
+	if err != nil {
+		paaks.IssueError(w, "No token", http.StatusUnauthorized)
+		return
+	}
+
+	tenantShort := token.Tenant[:8]
+
+	//	body, _ := ioutil.ReadAll(r.Body)
+	database := fmt.Sprintf("tnt_%s", tenantShort)
+
+	var alter Alter
+	err = json.NewDecoder(r.Body).Decode(&alter)
+	if err != nil {
+		paaks.IssueError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	subSql := []string{}
+
+	for _, col := range alter.Columns {
+
+		line := ""
+		if !checkValue(col.Name) {
+			paaks.IssueError(w, "Illegal value "+col.Name, http.StatusBadRequest)
+			return
+		}
+
+		switch col.Action {
+		case "DROP":
+			line = fmt.Sprintf("DROP COLUMN %s", col.Name)
+		case "ADD":
+			if !checkValue(col.DataType) {
+				paaks.IssueError(w, "Illegal value "+col.DataType, http.StatusBadRequest)
+				return
+			}
+
+			if col.NotNull {
+				if !checkValue(col.Default) {
+					paaks.IssueError(w, "Illegal value "+col.Default, http.StatusBadRequest)
+					return
+				}
+
+				line = fmt.Sprintf("ADD COLUMN %s %s NOT NULL DEFAULT %s", col.Name, col.DataType, col.Default)
+			} else {
+				line = fmt.Sprintf("ADD COLUMN %s %s", col.Name, col.DataType)
+			}
+		default:
+			paaks.IssueError(w, "Unknown action: "+col.Action, http.StatusBadRequest)
+			return
+		}
+		subSql = append(subSql, line)
+	}
+
+	var sql = fmt.Sprintf("ALTER TABLE %s.%s\n%s", database, alter.Table, strings.Join(subSql, ",\n"))
+	//	fmt.Fprintln(w, sql)
+
+	err = paaksdb.ExecDb(sql)
+	if err != nil {
+		paaks.IssueError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Fprintln(w, "Success")
+}
+
+func checkValue(value string) bool {
+	tokens, err := GetTokens(value)
+	if err != nil {
+		return false
+	}
+	res, tokensLeft, _ := ParseAst("value", tokens)
+	if len(tokensLeft) > 0 {
+		return false
+	}
+	return res
+}
+
+type Alter struct {
+	Table   string   `json:"table"`
+	Columns []Column `json:"columns"`
+}
+
+type Column struct {
+	Action   string `json:"action"`
+	Name     string `json:"name"`
+	DataType string `json:"data_type"`
+	NotNull  bool   `json:"not_null"`
+	Default  string `json:"default"`
 }
 
 ///////////////////////////////////////////////////////////
@@ -176,6 +271,7 @@ func main() {
 	http.HandleFunc("/sql", sqlHandler)
 	http.HandleFunc("/tables", tablesHandler)
 	http.HandleFunc("/columns", columnHandler)
+	http.HandleFunc("/alter-table", alterTableHandler)
 	http.HandleFunc("/health_check", check)
 	fmt.Println("Server starting...")
 	http.ListenAndServe(":3000", nil)

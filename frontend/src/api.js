@@ -19,6 +19,45 @@ export const API = {
         });        
     },
 
+    postJson(t, path, token, body, callback) {
+        const parseFetchResponse = response => response.clone().text().then(text => {
+            try {
+                var json = JSON.parse(text)
+                return ({
+                    json: json,
+                    meta: response
+                })
+            } catch (error) {
+                return ({
+                    json: '',
+                    meta: response,
+                    error: text
+                })
+            }
+        })
+//        .catch(err => ({json: '', meta: response.clone(), body: err}))
+/*
+        const parseFetchResponse = response => response.clone().json().then(text => ({
+            json: text,
+            meta: response
+        }))
+        .catch(err => ({json: '', meta: response.clone(), body: err}))
+*/
+        fetch('http://localhost:8080/' + path, {
+            method: 'POST',
+            body: body,
+            headers: new Headers({
+                'Authorization': 'Bearer ' + token,
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',                      
+            })
+        })
+        .then(parseFetchResponse)
+        .then(({ json, meta, error }) => {
+            callback(t, json, meta, error)
+        });        
+    },
+
     queryText(t, path, token, callback, method = 'GET') {
         fetch('http://localhost:8080/' + path, {
             method: method,

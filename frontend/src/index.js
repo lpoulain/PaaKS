@@ -4,7 +4,7 @@ import './index.css';
 import Filesystem from './filesystem';
 import FileView from './fileview';
 import FileEdit from './fileedit';
-import ServiceManager from './svc_mgr';
+import TableManager from './table_mgr';
 import reportWebVitals from './reportWebVitals';
 import Admin from './admin.js'
 import { Router } from 'react-router';
@@ -13,6 +13,7 @@ import { CookiesProvider, useCookies } from "react-cookie";
 import App from './App';
 import Login from './login';
 import createHistory from 'history/createBrowserHistory';
+import TenantAdmin from './tenant_admin';
 
 const history = createHistory();
 
@@ -29,8 +30,19 @@ export default class Frontend extends React.Component {
   componentDidMount() {
     if (this.state.token !== '') {
       fetch('http://localhost:8080/auth/token', { headers: new Headers( {'Authorization': 'Bearer ' + this.props.token }) })
-        .then(res => res.json())
-        .then(token => {
+        .then(res => {
+          return res.text()
+        })
+        .then(res => {
+          if (res.startsWith("Invalid")) {
+            this.setState({
+              tenant: 'invalid'
+            })
+            return
+          }
+
+          var token = JSON.parse(res)
+
           this.setState({
             tenant: token.tenant
           })
@@ -39,7 +51,11 @@ export default class Frontend extends React.Component {
   }
 
   render() {
-    if (typeof this.state.token == 'undefined' || this.state.token === '') {
+    if (this.state.token !== '' && this.state.tenant === '') {
+      return <div>...</div>
+    }
+
+    if (typeof this.state.token == 'undefined' || this.state.token === '' || this.state.tenant === 'invalid') {
       return <Login setCookie={this.props.setCookie} history={history}/>
     }
 
@@ -52,7 +68,8 @@ export default class Frontend extends React.Component {
       <Route exact path="/filesystem/:svc" render={(props) => <Filesystem {...props} token={this.props.token} setCookie={this.props.setCookie} history={history}/>}></Route>
       <Route path="/fileview/:svc/*" render={(props) => <FileView {...props} token={this.props.token} setCookie={this.props.setCookie} history={history}/>}></Route>
       <Route path="/fileedit/:svc/*" render={(props) => <FileEdit {...props} token={this.props.token} setCookie={this.props.setCookie} history={history}/>}></Route>
-      <Route exact path="/" render={(props) => <ServiceManager token={this.props.token} setCookie={this.props.setCookie} history={history}/>}></Route>
+      <Route path="/table/:table" render={(props) => <TableManager {...props} token={this.props.token} setCookie={this.props.setCookie} history={history}/>}></Route>
+      <Route exact path="/" render={(props) => <TenantAdmin token={this.props.token} setCookie={this.props.setCookie} history={history}/>}></Route>
     </Router>
   }
 }

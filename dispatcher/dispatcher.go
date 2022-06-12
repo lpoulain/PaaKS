@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"strings"
 
@@ -29,9 +28,10 @@ func index(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Scheme != "" {
 		scheme = r.URL.Scheme
 	}
-	host, _, _ := net.SplitHostPort(r.Host)
+	//	host, _, _ := net.SplitHostPort(r.Host)
 
-	w.Header().Set("Access-Control-Allow-Origin", scheme+"://"+host+":3000")
+	//	w.Header().Set("Access-Control-Allow-Origin", scheme+"://"+host+":3000")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PATCH, PUT, DELETE, OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept")
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
