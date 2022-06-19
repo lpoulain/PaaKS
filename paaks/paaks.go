@@ -55,10 +55,18 @@ func GetConnectionString() string {
 func GetToken(r *http.Request) (*Token, error) {
 	var mySigningKey = []byte(GetSecretKey())
 	authorization := r.Header["Authorization"]
+	var tokenString string
+
 	if len(authorization) == 0 {
-		return nil, fmt.Errorf("No authentication")
+		cookie, err := r.Cookie("token")
+		if err != nil && cookie.Value != "" {
+			tokenString = cookie.Value
+		} else {
+			return nil, fmt.Errorf("No authentication")
+		}
+	} else {
+		tokenString = authorization[0]
 	}
-	tokenString := authorization[0]
 	if !strings.HasPrefix(tokenString, "Bearer ") {
 		return nil, fmt.Errorf("No authentication")
 	}
