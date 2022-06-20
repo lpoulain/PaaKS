@@ -58,11 +58,10 @@ func GetToken(r *http.Request) (*Token, error) {
 	var tokenString string
 
 	if len(authorization) == 0 {
-		cookie, err := r.Cookie("token")
-		if err != nil && cookie.Value != "" {
-			tokenString = cookie.Value
-		} else {
-			return nil, fmt.Errorf("No authentication")
+		for _, cookie := range r.Cookies() {
+			if cookie.Name == "token" {
+				tokenString = "Bearer " + cookie.Value
+			}
 		}
 	} else {
 		tokenString = authorization[0]
