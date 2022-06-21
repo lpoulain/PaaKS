@@ -60,7 +60,7 @@ func GetToken(r *http.Request) (*Token, error) {
 	if len(authorization) == 0 {
 		for _, cookie := range r.Cookies() {
 			if cookie.Name == "token" {
-				tokenString = "Bearer " + cookie.Value
+				tokenString = "Bearer " + strings.TrimSuffix(cookie.Value, "%0A")
 			}
 		}
 	} else {
