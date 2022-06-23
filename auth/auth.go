@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/lpoulain/PaaKS/paaks"
@@ -125,6 +126,21 @@ type Authentication struct {
 }
 
 func parseToken(w http.ResponseWriter, r *http.Request) {
+	authorization := r.Header["Authorization"]
+	var tokenString string
+
+	if len(authorization) == 0 {
+		cookie, err := r.Cookie("token")
+		if err != nil && cookie.Value != "" {
+			tokenString = cookie.Value
+		} else {
+			tokenString = "?"
+		}
+	} else {
+		tokenString = authorization[0]
+	}
+	fmt.Println("Token: " + tokenString)
+
 	token, err := paaks.GetToken(r)
 
 	if err != nil {
@@ -183,7 +199,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("Auth for %s\n", token)
 	w.Header().Set("Content-Type", "text/plain")
 	expiration := time.Now().Add(365 * 24 * time.Hour)
-	cookie := http.Cookie{Name: "token", Value: token, Expires: expiration}
+	cookie := http.Cookie{Name: "token", Value: strings.TrimSuffix(token, "%0A"), Expires: expiration}
 	http.SetCookie(w, &cookie)
 
 	fmt.Fprintln(w, token)

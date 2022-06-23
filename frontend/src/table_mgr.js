@@ -17,14 +17,14 @@ export default class TableManager extends React.Component {
     }
 
     componentDidMount() {
-        API.postJson(this, 'db-mgr/columns', this.props.token, this.props.match.params.table, this.dataLoaded)
+        API.queryJson(this, 'db-mgr/tables/' + this.props.match.params.table, this.props.token, this.dataLoaded)
     }
 
     dataLoaded(t, results) {
-        results.forEach(r => {
+        results.columns.forEach(r => {
             r.deleted = false
         })
-        t.setState({ columns: results })
+        t.setState({ columns: results.columns })
     }
 
     addColumn(t) {

@@ -1,3 +1,5 @@
+import axios from 'axios';
+
 export const API = {
     queryJson(t, path, token, callback) {
         const parseFetchResponse = response => response.clone().json().then(text => ({
@@ -70,27 +72,24 @@ export const API = {
             .then(response => response.body)
             .then(body => body.getReader().read())
             .then(body => {
-                callback(t, new TextDecoder().decode(body.value))
+                callback(t, new TextDecoder().decode(body.value), null)
             });
     },
 
-    postForm(t, path, body, token, callback) {
-        var http = new XMLHttpRequest();
-        var url = 'http://localhost:8080/' + path
-        var params = 'body=' + encodeURIComponent(body);
-        http.open('POST', url, true);
-    
-        //Send the proper header information along with the request
-        http.withCredentials = true
-        http.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
-        http.setRequestHeader('Authorization', 'Bearer ' + token)
-    
-        http.onreadystatechange = function() {//Call a function when the state changes.
-          if(http.readyState == 4 && http.status == 200) {
-            callback(t, http.responseText)
+    postForm(t, path, formData, token, callback) {
+        axios
+        .post("http://localhost:8080/" + path, formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+            "Authorization": "Bearer " + token
           }
-        }
-        http.send(params);
+        })
+        .then((response) => {
+            callback(t, response, null)
+        })
+        .catch((e) => {
+            callback(t, null, e)
+        })
     },
 
     postMessage(t, path, body, callback) {

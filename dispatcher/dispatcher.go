@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
+	"net"
 	"net/http"
 	"strings"
 
@@ -28,10 +30,20 @@ func index(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Scheme != "" {
 		scheme = r.URL.Scheme
 	}
-	//	host, _, _ := net.SplitHostPort(r.Host)
+	host, _, _ := net.SplitHostPort(r.Host)
 
-	//	w.Header().Set("Access-Control-Allow-Origin", scheme+"://"+host+":3000")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	referer := r.Header.Get("Referer")
+	if referer != "" {
+		hostStrings := strings.Split(referer, "/")
+		if len(hostStrings) >= 3 {
+			refererHost, refererPort, _ := net.SplitHostPort(hostStrings[2])
+			if refererHost == host {
+				w.Header().Set("Access-Control-Allow-Origin", scheme+"://"+refererHost+":"+refererPort)
+			}
+		}
+	}
+
+	//	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PATCH, PUT, DELETE, OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept")
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
@@ -71,16 +83,13 @@ func index(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("  => http:/" + path)
 
 	switch r.Method {
-	case "GET":
-		req, error = http.NewRequest("GET", "http:/"+path, nil)
+	case "GET", "DELETE":
+		req, error = http.NewRequest(r.Method, "http:/"+path, nil)
 		//		resp, error = http.Get("http:/" + r.URL.Path)
 		break
-	case "POST":
-		req, error = http.NewRequest("POST", "http:/"+path, r.Body)
+	case "POST", "PUT":
+		req, error = http.NewRequest(r.Method, "http:/"+path, r.Body)
 		//		resp, error = http.Post("http:/"+r.URL.Path, r.Header.Get("Content-Type"), r.Body)
-		break
-	case "DELETE":
-		req, error = http.NewRequest("DELETE", "http:/"+path, nil)
 		break
 	default:
 		http.Error(w, "Unsupported method: "+r.Method, http.StatusBadRequest)
@@ -93,7 +102,7 @@ func index(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if path != "/auth/login" {
-		req.Header.Add("Authorization", r.Header.Get("Authorization"))
+		req.Header.Add("Authorization", getAuthorization(r))
 	}
 	req.Header.Add("Content-Type", r.Header.Get("Content-Type"))
 
@@ -126,7 +135,23 @@ func index(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if resp.StatusCode != 200 {
+		w.WriteHeader(resp.StatusCode)
+	}
 	w.Write(body)
+}
+
+func getAuthorization(r *http.Request) string {
+	authString := r.Header.Get("Authorization")
+	if authString == "" {
+		for _, cookie := range r.Cookies() {
+			if cookie.Name == "token" {
+				authString = "Bearer " + strings.TrimSuffix(cookie.Value, "%0A")
+			}
+		}
+	}
+
+	return authString
 }
 
 func check(w http.ResponseWriter, r *http.Request) {
@@ -137,5 +162,7 @@ func main() {
 	http.HandleFunc("/", index)
 	http.HandleFunc("/health_check", check)
 	fmt.Println("Server starting...")
-	http.ListenAndServe(":3000", nil)
+	if err := http.ListenAndServe(":3000", nil); err != nil {
+		log.Fatal(err)
+	}
 }

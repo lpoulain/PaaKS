@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/julienschmidt/httprouter"
 	"github.com/lpoulain/PaaKS/paaks"
 	"github.com/lpoulain/PaaKS/paaksdb"
 )
@@ -18,7 +19,7 @@ var test paaks.User
 
 ////////////////////////////////////////////////
 
-func sqlHandler(w http.ResponseWriter, r *http.Request) {
+func sqlHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	token, err := paaks.GetToken(r)
 	if err != nil {
 		paaks.IssueError(w, err.Error(), http.StatusBadRequest)
@@ -107,7 +108,7 @@ func tableConstructor(rows *sql.Rows) (string, error) {
 	return name, nil
 }
 
-func tablesHandler(w http.ResponseWriter, r *http.Request) {
+func tablesHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	token, err := paaks.GetToken(r)
 	if err != nil {
 		paaks.IssueError(w, "No token", http.StatusUnauthorized)
@@ -129,40 +130,83 @@ func tablesHandler(w http.ResponseWriter, r *http.Request) {
 
 func columnConstructor(rows *sql.Rows) (interface{}, error) {
 	var name string
-	var ordinal_position int
 	var is_nullable bool
 	var data_type string
 	var column_default string
 
-	if err := rows.Scan(&name, &ordinal_position, &is_nullable, &data_type, &column_default); err != nil {
+	if err := rows.Scan(&name, &is_nullable, &data_type, &column_default); err != nil {
 		return "", err
 	}
 
 	return map[string]interface{}{
-		"name":             name,
-		"ordinal_position": ordinal_position,
-		"is_nullable":      is_nullable,
-		"data_type":        data_type,
-		"column_default":   column_default,
+		"name":           name,
+		"is_nullable":    is_nullable,
+		"data_type":      data_type,
+		"column_default": column_default,
 	}, nil
 }
 
-func columnHandler(w http.ResponseWriter, r *http.Request) {
+func readTableHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	token, err := paaks.GetToken(r)
 	if err != nil {
 		paaks.IssueError(w, "No token", http.StatusUnauthorized)
 		return
 	}
 
-	body, err := ioutil.ReadAll(r.Body)
+	tableName := ps.ByName("tableName")
 
-	paaksdb.QueryDbToResponse(w, fmt.Sprintf("SELECT column_name, ordinal_position, CASE WHEN is_nullable = 'YES' THEN 'true' ELSE 'false' END, UPPER(udt_name) AS data_type, COALESCE(column_default, '') FROM information_schema.columns WHERE table_schema = 'tnt_%s' AND table_name = $1 ORDER BY ordinal_position",
+	objects, err := paaksdb.QueryDb(fmt.Sprintf("SELECT column_name, CASE WHEN is_nullable = 'YES' THEN 'true' ELSE 'false' END, UPPER(udt_name) AS data_type, COALESCE(column_default, '') FROM information_schema.columns WHERE table_schema = 'tnt_%s' AND table_name = $1 ORDER BY ordinal_position",
 		token.Tenant[:8]),
 		columnConstructor,
-		string(body))
+		tableName)
+
+	if err != nil {
+		paaks.IssueError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	response := map[string]interface{}{
+		"table":   tableName,
+		"columns": objects,
+	}
+
+	w.Header().Set("Content-Type", "text/json")
+	result, _ := json.Marshal(response)
+	w.Write(result)
 }
 
-func alterTableHandler(w http.ResponseWriter, r *http.Request) {
+func downloadTableHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	token, err := paaks.GetToken(r)
+	if err != nil {
+		paaks.IssueError(w, "No token", http.StatusUnauthorized)
+		return
+	}
+
+	tableName := ps.ByName("tableName")
+
+	objects, err := paaksdb.QueryDb(fmt.Sprintf("SELECT column_name, CASE WHEN is_nullable = 'YES' THEN 'true' ELSE 'false' END, UPPER(udt_name) AS data_type, COALESCE(column_default, '') FROM information_schema.columns WHERE table_schema = 'tnt_%s' AND table_name = $1 ORDER BY ordinal_position",
+		token.Tenant[:8]),
+		columnConstructor,
+		tableName)
+
+	if err != nil {
+		paaks.IssueError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	response := map[string]interface{}{
+		"table":   tableName,
+		"columns": objects,
+	}
+
+	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Header().Set("Content-Disposition", "attachment; filename=\"paaks_"+tableName+"_definition.json\"")
+	result, _ := json.Marshal(response)
+	w.Write(result)
+
+}
+
+func alterTableHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	token, err := paaks.GetToken(r)
 	if err != nil {
 		paaks.IssueError(w, "No token", http.StatusUnauthorized)
@@ -174,7 +218,7 @@ func alterTableHandler(w http.ResponseWriter, r *http.Request) {
 	//	body, _ := ioutil.ReadAll(r.Body)
 	database := fmt.Sprintf("tnt_%s", tenantShort)
 
-	var alter Alter
+	var alter TableDescription
 	err = json.NewDecoder(r.Body).Decode(&alter)
 	if err != nil {
 		paaks.IssueError(w, err.Error(), http.StatusBadRequest)
@@ -200,7 +244,7 @@ func alterTableHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			if col.NotNull {
+			if !col.Nullable {
 				if !checkValue(col.Default) {
 					paaks.IssueError(w, "Illegal value "+col.Default, http.StatusBadRequest)
 					return
@@ -241,7 +285,7 @@ func checkValue(value string) bool {
 	return res
 }
 
-type Alter struct {
+type TableDescription struct {
 	Table   string   `json:"table"`
 	Columns []Column `json:"columns"`
 }
@@ -250,13 +294,13 @@ type Column struct {
 	Action   string `json:"action"`
 	Name     string `json:"name"`
 	DataType string `json:"data_type"`
-	NotNull  bool   `json:"not_null"`
+	Nullable bool   `json:"is_nullable"`
 	Default  string `json:"default"`
 }
 
 ///////////////////////////////////////////////////////////
 
-func check(w http.ResponseWriter, r *http.Request) {
+func check(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	_, err := paaks.GetToken(r)
 	if err != nil {
 		paaks.IssueError(w, "No token", http.StatusUnauthorized)
@@ -265,14 +309,110 @@ func check(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "Health Check")
 }
 
+func createTableHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	token, err := paaks.GetToken(r)
+	if err != nil {
+		paaks.IssueError(w, "No token", http.StatusUnauthorized)
+		return
+	}
+
+	tenantShort := token.Tenant[:8]
+
+	//	body, _ := ioutil.ReadAll(r.Body)
+	database := fmt.Sprintf("tnt_%s", tenantShort)
+
+	f, _, _ := r.FormFile("file")
+	metadata, _ := ioutil.ReadAll(f)
+	fmt.Println(string(metadata))
+
+	var create TableDescription
+	err = json.Unmarshal(metadata, &create)
+	if err != nil {
+		paaks.IssueError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	subSql := []string{}
+
+	for _, col := range create.Columns {
+		if !checkValue(col.DataType) {
+			paaks.IssueError(w, "Illegal datatype value: ["+col.DataType+"]", http.StatusBadRequest)
+			return
+		}
+
+		if col.Default != "" && !checkValue(col.Default) {
+			paaks.IssueError(w, "Illegal default value: ["+col.Default+"]", http.StatusBadRequest)
+			return
+		}
+
+		line := fmt.Sprintf("%s %s", col.Name, col.DataType)
+
+		if !col.Nullable {
+			line += fmt.Sprintf(" NOT NULL")
+		}
+
+		if col.Default != "" {
+			line += fmt.Sprintf(" DEFAULT %s", col.Default)
+		}
+
+		subSql = append(subSql, line)
+	}
+
+	sql := fmt.Sprintf("CREATE TABLE %s.%s(\n  %s\n)", database, create.Table, strings.Join(subSql, ",\n  "))
+	fmt.Println(sql)
+	err = paaksdb.ExecDb(sql)
+	if err != nil {
+		paaks.IssueError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Fprintln(w, "Success")
+}
+
+func deleteTableHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	token, err := paaks.GetToken(r)
+	if err != nil {
+		paaks.IssueError(w, "No token", http.StatusUnauthorized)
+		return
+	}
+
+	tenantShort := token.Tenant[:8]
+	database := fmt.Sprintf("tnt_%s", tenantShort)
+
+	sql := fmt.Sprintf("DROP TABLE %s.%s", database, ps.ByName("tableName"))
+	fmt.Println(sql)
+	err = paaksdb.ExecDb(sql)
+	if err != nil {
+		paaks.IssueError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Fprintln(w, "Success")
+}
+
 ///////////////////////////////////////////////////////////
 
 func main() {
-	http.HandleFunc("/sql", sqlHandler)
-	http.HandleFunc("/tables", tablesHandler)
-	http.HandleFunc("/columns", columnHandler)
-	http.HandleFunc("/alter-table", alterTableHandler)
-	http.HandleFunc("/health_check", check)
+	router := httprouter.New()
+	router.POST("/sql", sqlHandler)
+	router.GET("/tables", tablesHandler)
+	router.GET("/tables/:tableName", readTableHandler)
+	router.GET("/tables/:tableName/download", downloadTableHandler)
+	router.POST("/tables", createTableHandler)
+	router.DELETE("/tables/:tableName", deleteTableHandler)
+	router.PUT("/tables/:tableName", alterTableHandler)
+	router.GET("/health_check", check)
+
+	/*	http.HandleFunc("/sql", sqlHandler)
+		http.HandleFunc("/tables", tablesHandler)
+		router.HandleFunc("/tables/{tableName}", columnHandler).Methods("GET")
+		router.HandleFunc("/tables/{tableName}", createTableHandler).Methods("PUT")
+		router.HandleFunc("/tables/{tableName}", deleteTableHandler).Methods("DELETE")
+		http.HandleFunc("/columns", columnHandler)
+		http.HandleFunc("/alter-table", alterTableHandler)
+		http.HandleFunc("/health_check", check)
+	*/
 	fmt.Println("Server starting...")
-	http.ListenAndServe(":3000", nil)
+
+	http.ListenAndServe(":3000", router)
 }
