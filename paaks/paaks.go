@@ -37,7 +37,7 @@ type Token struct {
 
 func IssueError(w http.ResponseWriter, message string, status int) {
 	fmt.Println(message)
-	http.Error(w, message, http.StatusBadRequest)
+	http.Error(w, message, status)
 }
 
 func GetHostname() string {
