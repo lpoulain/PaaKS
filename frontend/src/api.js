@@ -60,9 +60,10 @@ export const API = {
         });        
     },
 
-    queryText(t, path, token, callback, method = 'GET') {
+    queryText(t, path, token, callback, method = 'GET', body='') {
         fetch('http://localhost:8080/' + path, {
             method: method,
+            body: body,
             headers: new Headers({
                 'Authorization': 'Bearer ' + token,
                 'Accept': 'application/json',

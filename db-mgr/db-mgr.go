@@ -130,17 +130,17 @@ func tablesHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) 
 
 func columnConstructor(rows *sql.Rows) (interface{}, error) {
 	var name string
-	var is_nullable bool
+	var not_null bool
 	var data_type string
 	var column_default string
 
-	if err := rows.Scan(&name, &is_nullable, &data_type, &column_default); err != nil {
+	if err := rows.Scan(&name, &not_null, &data_type, &column_default); err != nil {
 		return "", err
 	}
 
 	return map[string]interface{}{
 		"name":           name,
-		"is_nullable":    is_nullable,
+		"not_null":       not_null,
 		"data_type":      data_type,
 		"column_default": column_default,
 	}, nil
@@ -155,7 +155,7 @@ func readTableHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Para
 
 	tableName := ps.ByName("tableName")
 
-	objects, err := paaksdb.QueryDb(fmt.Sprintf("SELECT column_name, CASE WHEN is_nullable = 'YES' THEN 'true' ELSE 'false' END, UPPER(udt_name) AS data_type, COALESCE(column_default, '') FROM information_schema.columns WHERE table_schema = 'tnt_%s' AND table_name = $1 ORDER BY ordinal_position",
+	objects, err := paaksdb.QueryDb(fmt.Sprintf("SELECT column_name, CASE WHEN is_nullable = 'YES' THEN 'false' ELSE 'true' END, UPPER(udt_name) AS data_type, COALESCE(column_default, '') FROM information_schema.columns WHERE table_schema = 'tnt_%s' AND table_name = $1 ORDER BY ordinal_position",
 		token.Tenant[:8]),
 		columnConstructor,
 		tableName)
@@ -184,7 +184,7 @@ func downloadTableHandler(w http.ResponseWriter, r *http.Request, ps httprouter.
 
 	tableName := ps.ByName("tableName")
 
-	objects, err := paaksdb.QueryDb(fmt.Sprintf("SELECT column_name, CASE WHEN is_nullable = 'YES' THEN 'true' ELSE 'false' END, UPPER(udt_name) AS data_type, COALESCE(column_default, '') FROM information_schema.columns WHERE table_schema = 'tnt_%s' AND table_name = $1 ORDER BY ordinal_position",
+	objects, err := paaksdb.QueryDb(fmt.Sprintf("SELECT column_name, CASE WHEN is_nullable = 'YES' THEN 'false' ELSE 'true' END, UPPER(udt_name) AS data_type, COALESCE(column_default, '') FROM information_schema.columns WHERE table_schema = 'tnt_%s' AND table_name = $1 ORDER BY ordinal_position",
 		token.Tenant[:8]),
 		columnConstructor,
 		tableName)
@@ -244,15 +244,19 @@ func alterTableHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Para
 				return
 			}
 
-			if !col.Nullable {
+			line = fmt.Sprintf("ADD COLUMN %s %s", col.Name, col.DataType)
+
+			if col.CannotBeNull {
+				line += " NOT NULL"
+			}
+
+			if col.Default != "" {
 				if !checkValue(col.Default) {
 					paaks.IssueError(w, "Illegal value "+col.Default, http.StatusBadRequest)
 					return
 				}
 
-				line = fmt.Sprintf("ADD COLUMN %s %s NOT NULL DEFAULT %s", col.Name, col.DataType, col.Default)
-			} else {
-				line = fmt.Sprintf("ADD COLUMN %s %s", col.Name, col.DataType)
+				line += fmt.Sprintf(" DEFAULT %s", col.Default)
 			}
 		default:
 			paaks.IssueError(w, "Unknown action: "+col.Action, http.StatusBadRequest)
@@ -262,7 +266,7 @@ func alterTableHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Para
 	}
 
 	var sql = fmt.Sprintf("ALTER TABLE %s.%s\n%s", database, alter.Table, strings.Join(subSql, ",\n"))
-	//	fmt.Fprintln(w, sql)
+	fmt.Println(sql)
 
 	err = paaksdb.ExecDb(sql)
 	if err != nil {
@@ -291,11 +295,11 @@ type TableDescription struct {
 }
 
 type Column struct {
-	Action   string `json:"action"`
-	Name     string `json:"name"`
-	DataType string `json:"data_type"`
-	Nullable bool   `json:"is_nullable"`
-	Default  string `json:"default"`
+	Action       string `json:"action"`
+	Name         string `json:"name"`
+	DataType     string `json:"data_type"`
+	CannotBeNull bool   `json:"not_null"`
+	Default      string `json:"default"`
 }
 
 ///////////////////////////////////////////////////////////
@@ -347,7 +351,7 @@ func createTableHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Pa
 
 		line := fmt.Sprintf("%s %s", col.Name, col.DataType)
 
-		if !col.Nullable {
+		if col.CannotBeNull {
 			line += fmt.Sprintf(" NOT NULL")
 		}
 

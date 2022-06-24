@@ -21,7 +21,9 @@ export default class TableManager extends React.Component {
     }
 
     dataLoaded(t, results) {
+        var i = 1
         results.columns.forEach(r => {
+            r.ordinal_position = i++
             r.deleted = false
         })
         t.setState({ columns: results.columns })
@@ -91,15 +93,15 @@ export default class TableManager extends React.Component {
 
         console.log(request)
         t.setState({ error: '' })
-        API.postJson(t, 'db-mgr/alter-table', t.props.token, JSON.stringify(request), t.alterDone)
+        API.queryText(t, 'db-mgr/tables/' + t.props.match.params.table, t.props.token, t.alterDone, "PUT", JSON.stringify(request))
     }
 
-    alterDone(t, json, meta, error) {
-        if (error !== '') {
+    alterDone(t, _, error) {
+        if (error !== null) {
             t.setState({ error: error })
         } else {
             t.setState({ newColumns: []})
-            API.postJson(t, 'db-mgr/columns', t.props.token, t.props.match.params.table, t.dataLoaded)
+            API.queryJson(t, 'db-mgr/tables/' + t.props.match.params.table, t.props.token, t.dataLoaded)
         }
     }
 
@@ -122,7 +124,7 @@ export default class TableManager extends React.Component {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {this.state.columns.map(col => <Column key={col.ordinal_position} col={col} parent={this}></Column>)}
+                                    {this.state.columns.map(col => <Column key={col.name} col={col} parent={this}></Column>)}
                                     {this.state.newColumns.map(col => <NewColumn key={col.ordinal_position} col={col} parent={this}></NewColumn>)}
                                 </tbody>
                             </table>
@@ -150,7 +152,7 @@ class Column extends React.Component {
                 <tr style={{textDecoration:'line-through'}}>
                     <td>{this.props.col.name}</td>
                     <td>{this.props.col.data_type}</td>
-                    <td>{this.props.col.is_nullable ? 'True' : 'False'}</td>
+                    <td>{this.props.col.not_null ? <span>&#10003;</span> : <span></span>}</td>
                     <td>{this.props.col.column_default}</td>
                     <td>
                         <button type="button" className="btn btn-success" onClick={() => this.props.parent.switchColumn(this.props.parent, this.props.col)}>Undo Remove</button>
@@ -162,7 +164,7 @@ class Column extends React.Component {
             <tr>
                 <td>{this.props.col.name}</td>
                 <td>{this.props.col.data_type}</td>
-                <td>{this.props.col.is_nullable ? 'True' : 'False'}</td>
+                <td>{this.props.col.not_null ? <span>&#10003;</span> : <span></span>}</td>
                 <td>{this.props.col.column_default}</td>
                 <td>
                     <button type="button" className="btn btn-danger" onClick={() => this.props.parent.switchColumn(this.props.parent, this.props.col)}>Remove</button>
