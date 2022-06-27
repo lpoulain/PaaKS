@@ -362,7 +362,30 @@ func createTableHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Pa
 		subSql = append(subSql, line)
 	}
 
-	sql := fmt.Sprintf("CREATE TABLE %s.%s(\n  %s\n)", database, create.Table, strings.Join(subSql, ",\n  "))
+	sql := fmt.Sprintf("CREATE TABLE \"%s\".\"%s\"(\n  %s\n)", database, create.Table, strings.Join(subSql, ",\n  "))
+	fmt.Println(sql)
+	err = paaksdb.ExecDb(sql)
+	if err != nil {
+		paaks.IssueError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Fprintln(w, "Success")
+}
+
+func createEmptyTableHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	token, err := paaks.GetToken(r)
+	if err != nil {
+		paaks.IssueError(w, "No token", http.StatusUnauthorized)
+		return
+	}
+
+	tenantShort := token.Tenant[:8]
+
+	//	body, _ := ioutil.ReadAll(r.Body)
+	database := fmt.Sprintf("tnt_%s", tenantShort)
+
+	sql := fmt.Sprintf("CREATE TABLE \"%s\".\"%s\" ()", database, ps.ByName("tableName"))
 	fmt.Println(sql)
 	err = paaksdb.ExecDb(sql)
 	if err != nil {
@@ -383,7 +406,7 @@ func deleteTableHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Pa
 	tenantShort := token.Tenant[:8]
 	database := fmt.Sprintf("tnt_%s", tenantShort)
 
-	sql := fmt.Sprintf("DROP TABLE %s.%s", database, ps.ByName("tableName"))
+	sql := fmt.Sprintf("DROP TABLE \"%s\".\"%s\"", database, ps.ByName("tableName"))
 	fmt.Println(sql)
 	err = paaksdb.ExecDb(sql)
 	if err != nil {
@@ -403,19 +426,11 @@ func main() {
 	router.GET("/tables/:tableName", readTableHandler)
 	router.GET("/tables/:tableName/download", downloadTableHandler)
 	router.POST("/tables", createTableHandler)
+	router.POST("/tables/:tableName", createEmptyTableHandler)
 	router.DELETE("/tables/:tableName", deleteTableHandler)
 	router.PUT("/tables/:tableName", alterTableHandler)
 	router.GET("/health_check", check)
 
-	/*	http.HandleFunc("/sql", sqlHandler)
-		http.HandleFunc("/tables", tablesHandler)
-		router.HandleFunc("/tables/{tableName}", columnHandler).Methods("GET")
-		router.HandleFunc("/tables/{tableName}", createTableHandler).Methods("PUT")
-		router.HandleFunc("/tables/{tableName}", deleteTableHandler).Methods("DELETE")
-		http.HandleFunc("/columns", columnHandler)
-		http.HandleFunc("/alter-table", alterTableHandler)
-		http.HandleFunc("/health_check", check)
-	*/
 	fmt.Println("Server starting...")
 
 	http.ListenAndServe(":3000", router)
