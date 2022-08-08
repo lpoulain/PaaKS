@@ -53,6 +53,11 @@ func getK8sResources() (*kubernetes.Clientset, dep.DeploymentInterface, error) {
 
 ///////////////
 
+type GitCommand struct {
+	Command   string `json:"command"`
+	Parameter string `json:"parameter"`
+}
+
 func router(w http.ResponseWriter, r *http.Request) {
 	token, err := paaks.GetToken(r)
 	if err != nil {
@@ -60,6 +65,14 @@ func router(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	tenant := token.Tenant
+
+	var cmd GitCommand
+
+	err = json.NewDecoder(r.Body).Decode(&cmd)
+	/*	if err != nil {
+		paaks.IssueError(w, "Cannot parse the body command: "+err.Error(), http.StatusInternalServerError)
+		return
+	}*/
 
 	subPaths := strings.Split(r.URL.Path, "/")
 	service := ""
@@ -76,7 +89,7 @@ func router(w http.ResponseWriter, r *http.Request) {
 			paaks.IssueError(w, "Missing service", http.StatusBadRequest)
 			return
 		}
-		create(w, r, service, tenant)
+		create(w, r, service, tenant, &cmd)
 		return
 	case "DELETE":
 		if service == "" {
@@ -84,6 +97,9 @@ func router(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		delete(w, r, service, tenant)
+		return
+	case "PUT":
+		gitCommand(w, r, service, tenant, &cmd)
 		return
 	default:
 		paaks.IssueError(w, "Unsupported mehtod: "+r.Method, http.StatusBadRequest)
@@ -109,11 +125,16 @@ func list(w http.ResponseWriter, r *http.Request, tenant string) {
 
 // Create a new service
 
-func create(w http.ResponseWriter, r *http.Request, serviceName string, tenant string) {
+func create(w http.ResponseWriter, r *http.Request, serviceName string, tenant string, cmd *GitCommand) {
 	serviceFullName := fmt.Sprintf("tnt-%s-%s", tenant[:8], serviceName)
 
 	// Create the directory and file
-	err := createServiceFiles(serviceFullName)
+	var err error
+	if cmd != nil {
+		err = gitCreateService(serviceFullName, cmd)
+	} else {
+		err = createServiceFiles(serviceFullName)
+	}
 	if err != nil {
 		paaks.IssueError(w, err.Error(), http.StatusInternalServerError)
 		return
